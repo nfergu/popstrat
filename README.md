@@ -1,0 +1,1 @@
+Based on http://bdgenomics.org/blog/2015/02/02/scalable-genomes-clustering-with-adam-and-spark/
