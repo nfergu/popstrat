@@ -4,9 +4,8 @@ import hex.FrameSplitter
 import hex.deeplearning.DeepLearning
 import hex.deeplearning.DeepLearningModel.DeepLearningParameters
 import hex.deeplearning.DeepLearningModel.DeepLearningParameters.Activation
-import org.apache.spark.SparkContext
+import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.SparkContext.rddToPairRDDFunctions
-import org.apache.spark.examples.h2o.DemoUtils._
 import org.apache.spark.h2o.H2OContext
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql._
@@ -20,67 +19,66 @@ import scala.io.Source
 
 object PopStrat {
 
-  private final val VARIANT_FREQUENCY_RANGE = inclusive(11, 11)
-
   def main(args: Array[String]): Unit = {
 
-    val master = args(0)
-    val genotypeFile = args(1)
-    val panelFile = args(2)
+    val genotypeFile = args(0)
+    val panelFile = args(1)
+    val master = if (args.length > 2) Some(args(2)) else None
 
-    val sc = new SparkContext(master, "h2oTest")
+    val conf = new SparkConf().setAppName("PopStrat")
+    master.foreach(conf.setMaster)
 
-    // populations to select
-    val pops = Set("GBR", "ASW", "CHB")
+    val sc = new SparkContext(conf)
 
-    // TRANSFORM THE panelFile Content in the sampleID -> population map
-    // containing the populations of interest (pops)
-    def extract(filter: (String, String) => Boolean= (s, t) => true) = Source.fromFile(panelFile).getLines().map( line => {
-      val toks = line.split("\t").toList
-      toks(0) -> toks(1)
-    }).toMap.filter( tup => filter(tup._1, tup._2) )
+    // Create a set of the populations that we want to predict
+    val populations = Set("GBR", "ASW", "CHB")
 
-    // panel extract from file, filtering by the 2 populations
-    val panel: Map[String,String] =
-      extract((sampleID: String, pop: String) => pops.contains(pop))
+    // Create a map of sample ID -> population so that we can filter out the samples we're not interested in
+    val panel: Map[String,String] = extract(panelFile, (sampleID: String, pop: String) => populations.contains(pop))
 
-    println("Created panel")
-
+    // Load the ADAM genotypes from the parquet file(s)
     val allGenotypes: RDD[Genotype] = sc.loadGenotypes(genotypeFile)
 
+    // Filter the genotypes so that we're left with only those in the populations we're interested in
     val genotypes: RDD[Genotype] = allGenotypes.filter(genotype => {panel.contains(genotype.getSampleId)})
 
-    // First convert the GenoTypes to our own Variant objects to conserve memory
-    val variantsRDD: RDD[Variant] = genotypes.map(toVariant)
+    // Convert the Genotype objects to our own SampleVariant objects to try and conserve memory
+    val variantsRDD: RDD[SampleVariant] = genotypes.map(toVariant)
 
-    val variantsBySampleId: RDD[(String, Iterable[Variant])] = variantsRDD.groupBy(_.sampleId)
+    // Group the variants by sample ID so we can process the variants sample-by-sample
+    val variantsBySampleId: RDD[(String, Iterable[SampleVariant])] = variantsRDD.groupBy(_.sampleId)
 
+    // Get the total number of samples. This will be used to find variants that are missing for some samples.
     val sampleCount: Long = variantsBySampleId.count()
 
-    println("Got sample count: " + sampleCount)
+    println("Found " + sampleCount + " samples")
 
-    val variantsByVariantId: RDD[(Int, Iterable[Variant])] = variantsRDD.groupBy(_.variantId).filter {
-      case (_, variants) => variants.size == sampleCount
+    // Group the variants by variant ID and filter out those variants that are missing from some samples
+    val variantsByVariantId: RDD[(Int, Iterable[SampleVariant])] = variantsRDD.groupBy(_.variantId).filter {
+      case (_, sampleVariants) => sampleVariants.size == sampleCount
     }
 
-    println("Grouped by variant ID")
-
-    val variantsHistogram: collection.Map[Int, Int] = variantsByVariantId.map {
-      case (variantId, variants) => (variantId, variants.count(_.alternateCount > 0))
+    // Make a map of variant ID -> count of samples with an alternate count of greater than zero
+    val variantFrequencies: collection.Map[Int, Int] = variantsByVariantId.map {
+      case (variantId, sampleVariants) => (variantId, sampleVariants.count(_.alternateCount > 0))
     }.collectAsMap()
 
-    println("Created variants histogram")
-
-    val filteredVariantsBySampleId: RDD[(String, Iterable[Variant])] = variantsBySampleId.map {
-      case (sampleId, variants) =>
-        (sampleId, variants.filter(variant => VARIANT_FREQUENCY_RANGE.contains(variantsHistogram.getOrElse(variant.variantId, -1))))
+    // Filter out those variants that are not in our desired frequency range. The objective here is simply to
+    // reduce the number of dimensions in the data set to make it easier to train the model.
+    // The specified range is fairly arbitrary and was chosen based on the fact that it includes a reasonable
+    // number of variants, but not too many.
+    val permittedRange = inclusive(11, 11)
+    val filteredVariantsBySampleId: RDD[(String, Iterable[SampleVariant])] = variantsBySampleId.map {
+      case (sampleId, sampleVariants) =>
+        val filteredSampleVariants = sampleVariants.filter(variant => permittedRange.contains(
+          variantFrequencies.getOrElse(variant.variantId, -1)))
+        (sampleId, filteredSampleVariants)
     }
 
-    val sortedVariantsBySampleId: RDD[(String, Array[Variant])] = filteredVariantsBySampleId.map {
+    // Sort the variants for each sample ID. Each sample should now have the same number of sorted variants.
+    val sortedVariantsBySampleId: RDD[(String, Array[SampleVariant])] = filteredVariantsBySampleId.map {
       case (sampleId, variants) =>
-        val variantsArray = variants.toArray.sortBy(_.variantId)
-        println("Created variants array of size " + variantsArray.length)
-        (sampleId, variantsArray)
+        (sampleId, variants.toArray.sortBy(_.variantId))
     }
 
     // All items in the RDD should now have the same variants in the same order so we can just use the first
@@ -88,8 +86,7 @@ object PopStrat {
     val header = StructType(Array(StructField("Region", StringType)) ++
       sortedVariantsBySampleId.first()._2.map(variant => {StructField(variant.variantId.toString, IntegerType)}))
 
-    println("Created header")
-
+    // Construct the rows of our SchemaRDD from the variants
     val rowRDD: RDD[Row] = sortedVariantsBySampleId.map {
       case (sampleId, sortedVariants) =>
         val region: Array[String] = Array(panel.getOrElse(sampleId, "Unknown"))
@@ -97,55 +94,51 @@ object PopStrat {
         Row.fromSeq(region ++ alternateCounts)
     }
 
-    println("Created row RDD")
-
+    // Create the SchemaRDD from the header and rows
     val sqlContext = new org.apache.spark.sql.SQLContext(sc)
-
     val schemaRDD = sqlContext.applySchema(rowRDD, header)
-
-    println("Created schema RDD")
 
     val h2oContext = new H2OContext(sc).start()
     import h2oContext._
 
+    // Convert the SchemaRDD into a H2O dataframe
     val dataFrame = h2oContext.toDataFrame(schemaRDD)
 
-    println("Created dataframe")
-
-    val sf = new FrameSplitter(dataFrame, Array(.7), Array("training", "test").map(Key.make), null)
-    water.H2O.submitTask(sf)
-    val splits = sf.getResult
+    // Split the dataframe into 50% training and 50% test data
+    val frameSplitter = new FrameSplitter(dataFrame, Array(.5), Array("training", "test").map(Key.make), null)
+    water.H2O.submitTask(frameSplitter)
+    val splits = frameSplitter.getResult
     val training = splits(0)
     val test = splits(1)
 
-    println("Column name: " + dataFrame.name(0))
+    // Set the parameters for our deep learning model.
+    val deepLearningParameters = new DeepLearningParameters()
+    deepLearningParameters._train = training
+    deepLearningParameters._valid = test
+    deepLearningParameters._response_column = "Region"
+    deepLearningParameters._epochs = 10
+    deepLearningParameters._activation = Activation.RectifierWithDropout
+    deepLearningParameters._hidden = Array[Int](100,100)
 
-    val dlParams = new DeepLearningParameters()
-    dlParams._train = training
-    dlParams._valid = test
-    dlParams._response_column = "Region"
-    dlParams._epochs = 10
-    dlParams._activation = Activation.RectifierWithDropout
-    dlParams._hidden = Array[Int](100,100)
+    // Train the deep learning model
+    val deepLearning = new DeepLearning(deepLearningParameters)
+    val deepLearningModel = deepLearning.trainModel.get
 
-    val dl = new DeepLearning(dlParams)
-    val dlModel = dl.trainModel.get
-
-    println("Built model")
-
-    val dlPredictTableTest = dlModel.score(test)('predict)
-    println("Scored model against test set")
-
-    dlModel.score(dataFrame)('predict)
-    println("Scored model against all records")
-
-    printf(residualPlotRCode(dlPredictTableTest, "predict", test, "ArrDelay"))
+    // Score the model against the entire dataset (training and test data)
+    deepLearningModel.score(dataFrame)('predict)
 
   }
 
-  def toVariant(genotype: Genotype): Variant = {
+  private def extract(file: String, filter: (String, String) => Boolean): Map[String,String] = {
+    Source.fromFile(file).getLines().map(line => {
+      val tokens = line.split("\t").toList
+      tokens(0) -> tokens(1)
+    }).toMap.filter(tuple => filter(tuple._1, tuple._2))
+  }
+
+  private def toVariant(genotype: Genotype): SampleVariant = {
     // Intern sample IDs as they will be repeated a lot
-    new Variant(genotype.getSampleId.intern(), variantId(genotype).hashCode(), alternateCount(genotype))
+    new SampleVariant(genotype.getSampleId.intern(), variantId(genotype).hashCode(), alternateCount(genotype))
   }
 
   private def alternateCount(genotype: Genotype): Int = {
@@ -159,6 +152,6 @@ object PopStrat {
     s"$name:$start:$end"
   }
 
-  case class Variant(sampleId: String, variantId: Int, alternateCount: Int)
+  case class SampleVariant(sampleId: String, variantId: Int, alternateCount: Int)
 
 }
