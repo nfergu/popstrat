@@ -77,6 +77,8 @@ populations. All being well, you should see an overall accuracy of more than 99%
 
 # Code
 
+A single Scala class at `src/main/scala/com/neilferguson/PopStrat.scala` contains all of the code for PopStrat.
+
 The code is fairly straightforward and should be easy to follow. It follows the following high level flow:
 
  1. Load the genotype and panel data from the specified files
