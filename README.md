@@ -1,7 +1,7 @@
 # Introduction
 
-PopStrat is a simple example of population stratification analysis using "deep learning" (neural networks). It aims to produce
-similar results to
+PopStrat is a simple example of population stratification analysis on genomics data using "deep learning" (neural networks).
+It aims to produce similar results to
 [this blog post from bdgenomics.org](http://bdgenomics.org/blog/2015/02/02/scalable-genomes-clustering-with-adam-and-spark/).
 The following technologies are used:
 
