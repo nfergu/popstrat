@@ -125,6 +125,7 @@ object PopStrat {
     val deepLearningModel = deepLearning.trainModel.get
 
     // Score the model against the entire dataset (training and test data)
+    // This causes the confusion matrix to be printed
     deepLearningModel.score(dataFrame)('predict)
 
   }
