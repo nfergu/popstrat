@@ -94,6 +94,6 @@ The code is fairly straightforward and should be easy to follow. It follows the 
 
 # Credits
 
-Thanks to the folks at [Big Data Genomics] for the
+Thanks to the folks at [Big Data Genomics](http://bdgenomics.org) for the
 [original blog post](http://bdgenomics.org/blog/2015/02/02/scalable-genomes-clustering-with-adam-and-spark/)
 that inspired this.
