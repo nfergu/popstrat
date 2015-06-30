@@ -31,7 +31,7 @@ object PopStrat {
     val sc = new SparkContext(conf)
 
     // Create a set of the populations that we want to predict
-    val populations = Set("GBR", "ASW", "CHB")
+    val populations = Set("ACB", "ASW", "BEB", "CDX", "CEU", "CHB", "CHS", "CLM", "ESN", "FIN", "GBR", "GIH")
 
     // Create a map of sample ID -> population so that we can filter out the samples we're not interested in
     val panel: Map[String,String] = extract(panelFile, (sampleID: String, pop: String) => populations.contains(pop))
@@ -116,7 +116,7 @@ object PopStrat {
     deepLearningParameters._train = training
     deepLearningParameters._valid = test
     deepLearningParameters._response_column = "Region"
-    deepLearningParameters._epochs = 10
+    deepLearningParameters._epochs = 50
     deepLearningParameters._activation = Activation.RectifierWithDropout
     deepLearningParameters._hidden = Array[Int](100,100)
 
