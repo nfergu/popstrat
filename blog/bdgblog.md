@@ -8,10 +8,12 @@ to predict which population group an individual belongs to based on their genome
 
 This is a follow-up to an earlier post:
 [Scalable Genomes Clustering With ADAM and Spark](http://bdgenomics.org/blog/2015/02/02/scalable-genomes-clustering-with-adam-and-spark/)
-and attempts to replicate the results of that post.
+and attempts to replicate the results of that post. However we will use a different machine learning technique;
+where the original post used [k-means clustering(https://en.wikipedia.org/wiki/K-means_clustering) we will use
+deep learning.
 
 We will use [ADAM](https://github.com/bigdatagenomics/adam) and [Apache Spark](https://spark.apache.org/) in
-combination with [H2O](http://0xdata.com/product/), an open source predictive analytics platform and
+combination with [H2O](http://0xdata.com/product/), an open source predictive analytics platform, and
 [Sparking Water](http://0xdata.com/product/sparkling-water/), which integrates H2O with Spark.
 
 ## Code
