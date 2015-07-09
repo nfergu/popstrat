@@ -1,7 +1,5 @@
 # Genomic Analysis Using ADAM, Spark and Deep Learning
 
-## Introduction
-
 Can we use deep learning to predict which population group you belong to, based solely on your genome?
 
 Yes, we can - and in this post, we will show you exactly how to do this in a scalable way, using Apache Spark. We
@@ -130,8 +128,7 @@ fairly arbitrary frequency of 11. This was chosen through experimentation as a v
 in the data set we are using.
 
 There are more structured approaches to
-[dimensionality reduction](https://en.wikipedia.org/wiki/Dimensionality_reduction), like
-[principal component analysis](https://en.wikipedia.org/wiki/Principal_component_analysis), which we could have
+[dimensionality reduction](https://en.wikipedia.org/wiki/Dimensionality_reduction), which we perhaps could have
 employed, but this technique seems to work well enough for this example.
 
 ```scala
@@ -155,7 +152,7 @@ what we are trying to predict.
 
 Ultimately, in order for our data to be consumed by H2O we need it to end up in an H2O `DataFrame` object. Currently,
 the best way to do this in Spark seems to be to convert our data to an RDD of Spark SQL
-[Row](http://spark.apache.org/docs/1.4.0/api/scala/index.html#org.apache.spark.sql.Row] objects, and then this can
+[Row](http://spark.apache.org/docs/1.4.0/api/scala/index.html#org.apache.spark.sql.Row) objects, and then this can
 automatically be converted to an H2O DataFrame.
 
 To achieve this, we first need to group the data by sample ID, and then sort the variants for each sample in a
@@ -271,7 +268,7 @@ Before building and running the example, please ensure you have version 7 or lat
 
 ### Building
 
-To build the example, first clone the GitHub repo at [https://github.com/nfergu/popstrat].
+To build the example, first clone the GitHub repo at [https://github.com/nfergu/popstrat](https://github.com/nfergu/popstrat).
 
 Then [download and install Maven](http://maven.apache.org/download.cgi). Then, at the command line, type:
 
@@ -296,7 +293,7 @@ and the second file is the panel file, which describes the population group for 
 Unzip the genotype data before continuing. This will require around 10GB of disk space.
 
 To speed up execution and save disk space, you can convert the genotype VCF file to [ADAM](https://github.com/bigdatagenomics/adam)
-format (using the [ADAM](https://github.com/bigdatagenomics/adam) `transform` command) if you wish. However,
+format (using the ADAM `transform` command) if you wish. However,
 this will take some time up-front. Both ADAM and VCF formats are supported.
 
 Next, run the following command:
@@ -322,7 +319,7 @@ See the "Code" section above for more details on what exactly you should expect 
 In this post, we have shown how to combine ADAM and Apache Spark with H2O's deep learning capabilities to predict
 an individual's population group based on his or her genomic data. Our results demonstrate that we can predict these
 very well, with more than 99% accuracy. Our choice of technologies makes for a relatively straightforward implementation,
-and we expect that it will be very scalable.
+and we expect it to be very scalable.
 
 Future work could involve validating the scalability of our solution on more hardware, trying to predict a wider
 range of population groups (currently we only predict 3 groups), and tuning the deep learning hyper-parameters to
