@@ -1,9 +1,11 @@
 # Introduction
 
 PopStrat is a simple example of population stratification analysis on genomics data using "deep learning" (neural networks).
-It aims to produce similar results to
-[this blog post from bdgenomics.org](http://bdgenomics.org/blog/2015/02/02/scalable-genomes-clustering-with-adam-and-spark/).
 That is, it aims to predict which population group an individual belongs to based on their genome.
+
+See [this blog post on bdgenomics.org](http://bdgenomics.org/blog/2015/07/10/genomic-analysis-using-adam/)
+for further explanation.
+
 The following technologies are used:
 
  * [ADAM](https://github.com/bigdatagenomics/adam): a genomics analysis platform and associated file formats
@@ -80,7 +82,10 @@ populations. All being well, you should see an overall accuracy of more than 99%
 
 A single Scala class at `src/main/scala/com/neilferguson/PopStrat.scala` contains all of the code for PopStrat.
 
-The code is fairly straightforward and should be easy to follow. It follows the following high level flow:
+See [this blog post on bdgenomics.org](http://bdgenomics.org/blog/2015/07/10/genomic-analysis-using-adam/) for
+a deep dive into the code.
+
+The code is fairly straightforward and follows the following high level flow:
 
  1. Load the genotype and panel data from the specified files
  2. Filter out those samples that aren't in the populations we are trying to predict
