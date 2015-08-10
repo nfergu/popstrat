@@ -3,8 +3,7 @@
 PopStrat is a simple example of population stratification analysis on genomics data using "deep learning" (neural networks).
 That is, it aims to predict which population group an individual belongs to based on their genome.
 
-See [this blog post on bdgenomics.org](http://bdgenomics.org/blog/2015/07/10/genomic-analysis-using-adam/)
-for further explanation.
+For a more detailed explanation see [this blog post on bdgenomics.org](http://bdgenomics.org/blog/2015/07/10/genomic-analysis-using-adam/).
 
 The following technologies are used:
 
