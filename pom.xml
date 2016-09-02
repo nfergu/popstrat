@@ -1,24 +1,21 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
-                      http://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <modelVersion>4.0.0</modelVersion>
-    <groupId>com.neilferguson</groupId>
-    <artifactId>popstrat</artifactId>
-    <version>0.1-SNAPSHOT</version>
-    <properties>
-        <spark.version>1.2.0</spark.version>
-        <h2o.version>3.0.0.8</h2o.version>
-        <sparklingwater.version>1.2.5</sparklingwater.version>
-        <adam.version>0.16.0</adam.version>
-    </properties>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>popstrat-master.src.main.scala.com</groupId>
+  <artifactId>neilferguson</artifactId>
+  <version>0.0.1-SNAPSHOT</version>
+  <properties> 
+        <spark.version>1.6.1</spark.version> 
+        <h2o.version>3.8.2.6</h2o.version> 
+        <sparklingwater.version>1.6.5</sparklingwater.version>
+        <adam.version>0.19.0</adam.version>
+    </properties>      
     <pluginRepositories>
         <pluginRepository>
             <id>scala-tools.org</id>
             <name>Scala-tools Maven2 Repository</name>
             <url>http://scala-tools.org/repo-releases</url>
         </pluginRepository>
-    </pluginRepositories>
+    </pluginRepositories> 
     <dependencies>
         <dependency>
             <groupId>org.apache.spark</groupId>
@@ -27,14 +24,14 @@
         </dependency>
         <dependency>
             <groupId>org.bdgenomics.adam</groupId>
-            <artifactId>adam-core</artifactId>
+            <artifactId>adam-core_2.10</artifactId>
             <version>${adam.version}</version>
         </dependency>
         <dependency>
             <groupId>org.bdgenomics.adam</groupId>
-            <artifactId>adam-apis</artifactId>
+            <artifactId>adam-apis_2.10</artifactId>
             <version>${adam.version}</version>
-        </dependency>
+        </dependency>  
         <dependency>
             <groupId>ai.h2o</groupId>
             <artifactId>sparkling-water-core_2.10</artifactId>
@@ -45,7 +42,7 @@
             <artifactId>sparkling-water-examples_2.10</artifactId>
             <version>${sparklingwater.version}</version>
         </dependency>
-        <dependency>
+        <dependency> 
             <groupId>ai.h2o</groupId>
             <artifactId>h2o-core</artifactId>
             <version>${h2o.version}</version>
@@ -87,8 +84,8 @@
             <plugin>
                 <groupId>org.scala-tools</groupId>
                 <artifactId>maven-scala-plugin</artifactId>
-                <version>2.14.1</version>
-                <executions>
+                <version>2.15.2</version>
+                <executions> 
                     <execution>
                         <goals>
                             <goal>compile</goal>
@@ -127,10 +124,10 @@
                                 <exclude>META-INF/*.RSA</exclude>
                             </excludes>
                         </filter>
-                    </filters>
+                    </filters> 
                     <finalName>uber-${project.artifactId}-${project.version}</finalName>
                 </configuration>
-            </plugin>
+            </plugin> 
         </plugins>
     </build>
 </project>
