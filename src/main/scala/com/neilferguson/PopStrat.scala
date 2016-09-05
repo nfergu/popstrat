@@ -25,7 +25,6 @@ import _root_.hex.Distribution.Family
 import _root_.hex.deeplearning.DeepLearningModel
 import _root_.hex.tree.gbm.GBMModel
 import _root_.hex.{Model, ModelMetricsBinomial}
-
 object PopStrat {
 
   def main(args: Array[String]): Unit = {
