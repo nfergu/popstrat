@@ -123,7 +123,7 @@ object PopStrat {
     val dataFrame=H2OFrameSupport.allStringVecToCategorical(dataFrame1)
 
     // Split the dataframe into 50% training, 30% test, and 20% validation data
-    val frameSplitter =new FrameSplitter(dataFrame, Array(.5, .3), Array("training", "test", "validation").map(Key.make[Frame](_)), null)
+    val frameSplitter = new FrameSplitter(dataFrame, Array(.5, .3), Array("training", "test", "validation").map(Key.make[Frame](_)), null)
     water.H2O.submitTask(frameSplitter)
     val splits = frameSplitter.getResult
     val training = splits(0)
