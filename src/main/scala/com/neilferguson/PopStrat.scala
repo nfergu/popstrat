@@ -5,18 +5,28 @@ import hex.deeplearning.DeepLearning
 import hex.deeplearning.DeepLearningModel.DeepLearningParameters
 import hex.deeplearning.DeepLearningModel.DeepLearningParameters.Activation
 import org.apache.spark.{SparkConf, SparkContext}
-import org.apache.spark.SparkContext.rddToPairRDDFunctions
+import org.apache.spark.SparkContext._
 import org.apache.spark.h2o.H2OContext
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql._
+import org.apache.spark.sql.types.DataTypes
 import org.bdgenomics.adam.rdd.ADAMContext._
 import org.bdgenomics.formats.avro.{Genotype, GenotypeAllele}
 import water.Key
-
+import hex._
+import water.fvec._
+import water.support._
 import scala.collection.JavaConverters._
 import scala.collection.immutable.Range.inclusive
 import scala.io.Source
+import org.apache.spark.sql.types.DataTypes
 
+
+
+import _root_.hex.Distribution.Family
+import _root_.hex.deeplearning.DeepLearningModel
+import _root_.hex.tree.gbm.GBMModel
+import _root_.hex.{Model, ModelMetricsBinomial}
 object PopStrat {
 
   def main(args: Array[String]): Unit = {
@@ -39,10 +49,10 @@ object PopStrat {
       }).toMap.filter(tuple => filter(tuple._1, tuple._2))
     }
     val panel: Map[String,String] = extract(panelFile, (sampleID: String, pop: String) => populations.contains(pop))
-
+          
     // Load the ADAM genotypes from the parquet file(s)
     // Next, filter the genotypes so that we're left with only those in the populations we're interested in
-    val allGenotypes: RDD[Genotype] = sc.loadGenotypes(genotypeFile)
+    val allGenotypes: RDD[Genotype] = sparkContextToADAMContext(sc).loadGenotypes(genotypeFile)
     val genotypes: RDD[Genotype] = allGenotypes.filter(genotype => {panel.contains(genotype.getSampleId)})
 
     // Convert the Genotype objects to our own SampleVariant objects to try and conserve memory
@@ -96,8 +106,8 @@ object PopStrat {
       case (sampleId, variants) =>
         (sampleId, variants.toArray.sortBy(_.variantId))
     }
-    val header = StructType(Array(StructField("Region", StringType)) ++
-      sortedVariantsBySampleId.first()._2.map(variant => {StructField(variant.variantId.toString, IntegerType)}))
+    val header = DataTypes.createStructType(Array(DataTypes.createStructField("Region", DataTypes.StringType,false)) ++
+      sortedVariantsBySampleId.first()._2.map(variant => {DataTypes.createStructField(variant.variantId.toString,DataTypes.IntegerType,false)}))
     val rowRDD: RDD[Row] = sortedVariantsBySampleId.map {
       case (sampleId, sortedVariants) =>
         val region: Array[String] = Array(panel.getOrElse(sampleId, "Unknown"))
@@ -107,22 +117,29 @@ object PopStrat {
 
     // Create the SchemaRDD from the header and rows and convert the SchemaRDD into a H2O dataframe
     val sqlContext = new org.apache.spark.sql.SQLContext(sc)
+    //val dataFrame=sqlContext.createDataFrame(rowRDD, header)
     val schemaRDD = sqlContext.applySchema(rowRDD, header)
     val h2oContext = new H2OContext(sc).start()
-    import h2oContext._
-    val dataFrame = h2oContext.toDataFrame(schemaRDD)
-
-    // Split the dataframe into 50% training, 30% test, and 20% validation data
-    val frameSplitter = new FrameSplitter(dataFrame, Array(.5, .3), Array("training", "test", "validation").map(Key.make), null)
+    import h2oContext._ 
+    val dataFrame1 =h2oContext.asH2OFrame(schemaRDD)
+    val dataFrame=H2OFrameSupport.allStringVecToCategorical(dataFrame1)
+    //val dataFrame = h2oContext.asDataFrame(dataFrame1)(sqlContext)
+    // Split final data table
+//    val keys = Array[String]("training.hex", "test.hex","validation.hex")
+//    val ratios = Array[Double](0.5, 0.3)
+//    val frameSplitter = H2OFrameSupport.splitFrame(dataFrame, keys, ratios)
+   // val (training, test,validation) = (frameSplitter(0), frameSplitter(1),frameSplitter(2))
+   // Split the dataframe into 50% training, 30% test, and 20% validation data
+   val frameSplitter = new FrameSplitter(dataFrame, Array(.5, .3), Array("training", "test", "validation").map(Key.make[Frame](_)), null)
+ 
     water.H2O.submitTask(frameSplitter)
     val splits = frameSplitter.getResult
     val training = splits(0)
     val validation = splits(2)
-
     // Set the parameters for our deep learning model.
     val deepLearningParameters = new DeepLearningParameters()
-    deepLearningParameters._train = training
-    deepLearningParameters._valid = validation
+    deepLearningParameters._train = training._key
+    deepLearningParameters._valid = validation._key
     deepLearningParameters._response_column = "Region"
     deepLearningParameters._epochs = 10
     deepLearningParameters._activation = Activation.RectifierWithDropout
@@ -134,8 +151,7 @@ object PopStrat {
 
     // Score the model against the entire dataset (training, test, and validation data)
     // This causes the confusion matrix to be printed
-    deepLearningModel.score(dataFrame)('predict)
-
+    deepLearningModel.score(dataFrame)
+  
   }
-
 }
